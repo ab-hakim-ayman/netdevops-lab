@@ -1,0 +1,77 @@
+---
+- name: Deploy NetDevOps FRR Fabric with BGP
+  hosts: fabric
+  gather_facts: false
+
+  tasks:
+    - name: Ensure interfaces are administratively up
+      ansible.builtin.command:
+        cmd: "ip link set dev {{ item.name }} up"
+      loop: "{{ interfaces }}"
+      changed_when: false
+      failed_when: false
+
+    - name: Render FRR BGP configuration to /etc/frr/frr.conf
+      ansible.builtin.template:
+        src: ../templates/frr_bgp.j2
+        dest: /etc/frr/frr.conf
+        owner: frr
+        group: frr
+        mode: '0640'
+        unsafe_writes: true
+      register: frr_conf
+
+    - name: Apply FRR configuration with vtysh
+      ansible.builtin.command:
+        cmd: "vtysh -f /etc/frr/frr.conf"
+      changed_when: true
+
+    - name: Save running configuration to startup
+      ansible.builtin.command:
+        cmd: "vtysh -c 'write memory'"
+      changed_when: false
+      failed_when: false
+
+- name: Verify BGP Convergence and Routing Tables
+  hosts: fabric
+  gather_facts: false
+
+  tasks:
+    - name: Wait for BGP neighbor peering to establish
+      ansible.builtin.pause:
+        seconds: 5
+
+    - name: Check BGP Peering Summary
+      ansible.builtin.command:
+        cmd: "vtysh -c 'show ip bgp summary'"
+      register: bgp_summary
+      changed_when: false
+
+    - name: Display BGP Peering Summary
+      ansible.builtin.debug:
+        msg: "{{ bgp_summary.stdout_lines }}"
+
+    - name: Check Received BGP Routes
+      ansible.builtin.command:
+        cmd: "vtysh -c 'show ip route bgp'"
+      register: bgp_routes
+      changed_when: false
+
+    - name: Display BGP Routes
+      ansible.builtin.debug:
+        msg: "{{ bgp_routes.stdout_lines }}"
+
+- name: End-to-End Data Plane Verification
+  hosts: leaf1
+  gather_facts: false
+
+  tasks:
+    - name: Ping leaf2 Loopback (10.255.0.12) from leaf1
+      ansible.builtin.command:
+        cmd: "ping -c 3 -I 10.255.0.11 10.255.0.12"
+      register: ping_leaf2
+      changed_when: false
+
+    - name: Display Ping Result
+      ansible.builtin.debug:
+        msg: "{{ ping_leaf2.stdout_lines }}"

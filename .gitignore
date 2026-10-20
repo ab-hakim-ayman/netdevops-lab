@@ -1,0 +1,16 @@
+# Containerlab runtime artifacts
+clab-*/
+.clab*/
+*.bak
+
+# Ansible artifacts
+*.retry
+.ansible/
+*.log
+
+# OS & Editor
+.DS_Store
+*.swp
+*~
+.idea/
+.vscode/

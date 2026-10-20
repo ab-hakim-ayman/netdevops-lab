@@ -1,0 +1,32 @@
+name: NetDevOps CI-CD Pipeline
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  pre-check:
+    name: Syntax & Dry Run
+    if: github.event_name == 'pull_request'
+    runs-on: self-hosted
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Ansible Syntax Check
+        run: |
+          ansible-playbook playbooks/deploy.yml --syntax-check
+
+  deploy-to-fabric:
+    name: Live Fabric Deployment
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: self-hosted
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Push Config via Ansible
+        run: |
+          ansible-playbook playbooks/deploy.yml
