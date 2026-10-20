@@ -65,7 +65,7 @@ topology:
         GF_SECURITY_ADMIN_PASSWORD: admin
         GF_USERS_ALLOW_SIGN_UP: "false"
       binds:
-        - configs/grafana/provisioning:/etc/grafana/provisioning
+        - configs/grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
 
   links:
     - endpoints: ["spine1:eth1", "leaf1:eth1"]
