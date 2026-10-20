@@ -2,8 +2,8 @@
 frr version 8.4_git
 frr defaults traditional
 hostname {{ hostname }}
-password zebra
-enable password zebra
+password {{ vault_router_password }}
+enable password {{ vault_router_password }}
 no ipv6 forwarding
 !
 {% for loopback in loopbacks | default([]) %}

@@ -7,6 +7,8 @@ clab-*/
 *.retry
 .ansible/
 *.log
+.vault_pass
+pr_diff.log
 
 # OS & Editor
 .DS_Store

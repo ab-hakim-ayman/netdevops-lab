@@ -8,16 +8,28 @@ on:
 
 jobs:
   pre-check:
-    name: Syntax & Dry Run
+    name: Validation, Schema & Dry-Run Diff
     if: github.event_name == 'pull_request'
     runs-on: self-hosted
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Run YAML Linting
+        run: |
+          yamllint .
+
+      - name: Validate Host Vars Schema with Pydantic
+        run: |
+          python3 scripts/validate_schema.py
+
       - name: Ansible Syntax Check
         run: |
           ansible-playbook playbooks/deploy.yml --syntax-check
+
+      - name: Ansible Dry-Run & Configuration Diff
+        run: |
+          ansible-playbook playbooks/deploy.yml --check --diff | tee pr_diff.log
 
   deploy-to-fabric:
     name: Live Fabric Deployment
