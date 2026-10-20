@@ -104,3 +104,23 @@ docker exec clab-netdevops-lab-leaf1 ping -c 3 -I 10.255.0.11 10.255.0.12
 ```bash
 clab destroy -t topology.clab.yml
 ```
+
+---
+
+## 🔄 CI/CD Pipeline (GitHub Actions & Self-Hosted Runner)
+
+The lab is integrated with GitHub Actions via a Self-Hosted Runner on the local Ubuntu machine.
+
+- **Workflow File**: `.github/workflows/pipeline.yml`
+- **GitHub Repository**: [ab-hakim-ayman/netdevops-lab](https://github.com/ab-hakim-ayman/netdevops-lab)
+
+### Pipeline Stages:
+1. **Pull Request (`pre-check`)**: Runs automated Ansible syntax verification (`ansible-playbook playbooks/deploy.yml --syntax-check`).
+2. **Merge / Push to `main` (`deploy-to-fabric`)**: Automatically runs the deployment playbook against the live Containerlab fabric to push configuration changes.
+
+### Running the Local Runner:
+```bash
+cd ~/actions-runner
+./run.sh
+```
+*(Or install as systemd service: `sudo ./svc.sh install && sudo ./svc.sh start`)*
