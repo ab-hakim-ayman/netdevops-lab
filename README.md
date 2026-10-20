@@ -107,20 +107,32 @@ clab destroy -t topology.clab.yml
 
 ---
 
-## 🔄 CI/CD Pipeline (GitHub Actions & Self-Hosted Runner)
+## 📊 Observability & Telemetry (Prometheus & Grafana)
 
-The lab is integrated with GitHub Actions via a Self-Hosted Runner on the local Ubuntu machine.
+The lab includes real-time telemetry running in the Containerlab fabric:
 
-- **Workflow File**: `.github/workflows/pipeline.yml`
-- **GitHub Repository**: [ab-hakim-ayman/netdevops-lab](https://github.com/ab-hakim-ayman/netdevops-lab)
+- **Prometheus UI**: [http://localhost:9090](http://localhost:9090)
+  - Scrapes metrics every 5s from all switches: BGP session states (`frr_bgp_peer_state`), prefix counts (`frr_bgp_peer_pfx_rcd`, `frr_bgp_peer_pfx_snt`), interface traffic (`frr_interface_receive_bytes_total`), and uptime.
+- **Grafana Dashboard**: [http://localhost:3000](http://localhost:3000)
+  - **Credentials**: `admin` / `admin`
+  - Automated datasource provisioning configured to Prometheus at `http://172.21.20.30:9090`.
 
-### Pipeline Stages:
-1. **Pull Request (`pre-check`)**: Runs automated Ansible syntax verification (`ansible-playbook playbooks/deploy.yml --syntax-check`).
-2. **Merge / Push to `main` (`deploy-to-fabric`)**: Automatically runs the deployment playbook against the live Containerlab fabric to push configuration changes.
+---
 
-### Running the Local Runner:
-```bash
-cd ~/actions-runner
-./run.sh
-```
-*(Or install as systemd service: `sudo ./svc.sh install && sudo ./svc.sh start`)*
+## 🛡️ Enterprise NetDevOps Features
+
+1. **Atomic Reload & Auto-Rollback (`frr-reload.py` + Ansible `block/rescue`)**:
+   - Replaces disruptive config reloads with atomic deltas via `/usr/lib/frr/frr-reload.py`.
+   - Takes pre-change timestamped backups (`/etc/frr/frr.conf.bak`).
+   - If BGP session assertion or end-to-end ping fails, the `rescue` section automatically restores the backup config and reloads FRR.
+2. **Pre-Change Validation Layer**:
+   - **YAML Linting**: `.yamllint` configuration.
+   - **Pydantic Schema Validator**: `scripts/validate_schema.py` validates ASN ranges (1-4294967295) and IPv4/CIDR addresses before deployment.
+   - **Dry-Run Diff**: `ansible-playbook playbooks/deploy.yml --check --diff` exports planned configuration changes.
+3. **Secrets Management (Ansible Vault)**:
+   - Sensitive router credentials encrypted with AES-256 in `inventory/group_vars/all/vault.yml`.
+   - Vault password stored in `.vault_pass` (git-ignored).
+4. **Automated CI/CD**:
+   - Pull Request: runs `yamllint`, `validate_schema.py`, syntax-check, and `--check --diff`.
+   - Push to `main`: triggers live fabric deployment and post-change data plane validation.
+
