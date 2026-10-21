@@ -124,4 +124,29 @@ If preferred, you can drag and drop `hq_router.rsc` into MikroTik Winbox **Files
 ```routeros
 /import file-name=hq_router.rsc
 ```
-The router will configure the entire bridge, 9 VLANs, DHCP servers, dual ISP failover, WireGuard VPN, and firewall rules in under 10 seconds!
+The router will configure the entire bridge, 9 VLANs, DHCP servers, dual ISP failover, WireGuard VPN, firewall rules, and Prometheus monitoring in under 10 seconds!
+
+---
+
+## 📊 Observability & Monitoring (Prometheus & Grafana)
+
+The corporate network includes a dedicated observability stack running via Docker Compose:
+
+```bash
+# Start Prometheus, Grafana, and MikroTik Exporter
+docker compose -f docker-compose.monitoring.yml up -d
+```
+
+### 🖥️ Dashboards & Endpoints:
+* **Grafana Dashboard:** [http://localhost:3001](http://localhost:3001)
+  * **Credentials:** `admin` / `admin`
+  * **Auto-Provisioned Dashboard:** `MikroTik Corporate Multi-Branch Network Overview`
+  * **Panels Included:**
+    * ⚡ **Router Health:** CPU load, RAM usage, Uptime, Exporter status
+    * 🌐 **Dual ISP WAN Traffic:** Primary vs Backup ISP bandwidth (RX/TX Mbps) and recursive failover indicators
+    * 🏢 **9 Departmental VLANs:** Bandwidth breakdown across HR, Admin, Mgmt, Staff, CCTV, VoIP, and Guest Hotspot
+    * 🔒 **WireGuard Site-to-Site VPN:** Tunnel throughput and handshake latency between Dhaka HQ and Chittagong Branch
+    * 🛡️ **Security & Conntrack:** NAT Connection tracking utilization and firewall drops
+* **Prometheus Targets & Metrics:** [http://localhost:9091](http://localhost:9091)
+* **MikroTik Exporter Metrics:** [http://localhost:9436/metrics](http://localhost:9436/metrics)
+

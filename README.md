@@ -76,6 +76,11 @@ python3 scripts/netbox_corp_sync.py
 
 # Deploy to live MikroTik devices via Ansible
 ansible-playbook playbooks/deploy_corp.yml
+
+# Launch Corporate Observability Stack (Prometheus + Grafana + MikroTik Exporter)
+docker compose -f docker-compose.monitoring.yml up -d
+# Access Grafana Dashboard at: http://localhost:3001 (admin / admin)
+# Access Prometheus at: http://localhost:9091
 ```
 
 ---

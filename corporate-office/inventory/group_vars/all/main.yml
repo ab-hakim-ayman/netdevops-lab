@@ -15,3 +15,9 @@ timezone: "Asia/Dhaka"
 failover_ping_targets:
   primary: "8.8.8.8"
   secondary: "1.1.1.1"
+
+# Observability & Monitoring Settings
+monitoring_user: "prometheus"
+monitoring_password: "PromMonSecure2026!"
+snmp_community: "corp-monitor"
+snmp_contact: "noc@corp.netdevops.local"

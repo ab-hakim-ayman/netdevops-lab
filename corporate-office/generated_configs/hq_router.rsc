@@ -165,7 +165,15 @@ add action=accept chain=input dst-port=51820 protocol=udp in-interface-list=WAN 
 
 # Management Protection: Only VLAN 10 (Management) can access Winbox/SSH on router
 add action=accept chain=input in-interface="vlan10-Management" comment="Allow Full Admin Access from Management VLAN"
+
+# Observability: Allow SNMP Polling and RouterOS API for Prometheus Scraper
+add action=accept chain=input dst-port=161 protocol=udp in-interface-list=LAN comment="Allow SNMP Polling from LAN"
+add action=accept chain=input dst-port=8728,8729 protocol=tcp in-interface-list=LAN comment="Allow RouterOS API from LAN"
+add action=accept chain=input dst-port=161 protocol=udp in-interface=wg-corp comment="Allow SNMP Polling over WireGuard"
+add action=accept chain=input dst-port=8728,8729 protocol=tcp in-interface=wg-corp comment="Allow RouterOS API over WireGuard"
+
 add action=drop chain=input dst-port=22,80,443,8291,8728,8729 protocol=tcp comment="Block Router Services from Other VLANs"
+
 
 # Forwarding Rules: Established / Related / FastTrack
 add action=fasttrack-connection chain=forward connection-state=established,related hw-offload=yes comment="FastTrack"
@@ -190,6 +198,20 @@ add action=accept chain=forward in-interface=wg-corp out-interface-list=LAN comm
 # 8. QoS Priority Queue for VoIP Telephony
 # ------------------------------------------------------------------------------
 /queue simple add name="VoIP-Priority-Queue" target="vlan60-VoIP" priority=1/1 max-limit=10M/10M comment="VoIP High Priority QoS"
+
+# ------------------------------------------------------------------------------
+# 9. Observability, SNMP & Prometheus Monitoring
+# ------------------------------------------------------------------------------
+# Enable SNMP v2c / v3 for Prometheus Monitoring
+/snmp set enabled=yes contact="noc@corp.netdevops.local" location="HQ-Dhaka"
+/snmp community add name=corp-monitor addresses=0.0.0.0/0 read-access=yes security=none
+
+# Dedicated Read-Only API User for Prometheus MikroTik Exporter
+/user group add name=monitoring policy=read,api,test comment="Read-only monitoring policy"
+/user add name=prometheus group=monitoring password="PromMonSecure2026!" comment="Prometheus Exporter Scraper"
+
+# Ensure RouterOS API service is enabled
+/ip service enable api
 
 # ------------------------------------------------------------------------------
 # Configuration rendered successfully.
