@@ -61,7 +61,28 @@
 /ip firewall nat add action=masquerade chain=srcnat out-interface-list=WAN comment="NAT Outbound to Internet"
 
 # ------------------------------------------------------------------------------
-# 5. Dual ISP Recursive Failover Routing
+# 5. Routing Tables & Dual ISP Inbound Symmetry (Mangle)
+# ------------------------------------------------------------------------------
+# Dedicated FIB Routing Tables for Return Traffic Symmetry
+{% for wan in wan_interfaces %}
+/routing table add name=to_{{ wan.name }} fib comment="Routing table for {{ wan.description }}"
+/ip route add dst-address=0.0.0.0/0 gateway={{ wan.gateway }} routing-table=to_{{ wan.name }} comment="Default return route via {{ wan.name }}"
+{% endfor %}
+
+# Inbound Connection & Routing Marks
+/ip firewall mangle
+{% for wan in wan_interfaces %}
+# Mark connections initiating from {{ wan.name }} to router services
+add action=mark-connection chain=input in-interface={{ wan.name }} connection-state=new new-connection-mark={{ wan.name }}_conn passthrough=yes comment="Mark inbound connections on {{ wan.name }}"
+add action=mark-routing chain=output connection-mark={{ wan.name }}_conn new-routing-mark=to_{{ wan.name }} passthrough=no comment="Route replies back via {{ wan.name }}"
+
+# Mark forwarded connections (e.g. DST-NAT / Port Forwarding)
+add action=mark-connection chain=forward in-interface={{ wan.name }} connection-state=new new-connection-mark={{ wan.name }}_fwd passthrough=yes comment="Mark forwarded traffic on {{ wan.name }}"
+add action=mark-routing chain=prerouting in-interface-list=LAN connection-mark={{ wan.name }}_fwd new-routing-mark=to_{{ wan.name }} passthrough=no comment="Return forwarded traffic via {{ wan.name }}"
+{% endfor %}
+
+# ------------------------------------------------------------------------------
+# 6. Dual ISP Recursive Failover Routing (Main Table)
 # ------------------------------------------------------------------------------
 # Primary Target Ping Anchor
 /ip route add dst-address={{ failover_ping_targets.primary }}/32 gateway={{ (wan_interfaces | selectattr('role', 'equalto', 'primary') | first).gateway }} scope=10 comment="Primary Ping Anchor"
@@ -72,7 +93,7 @@
 /ip route add dst-address=0.0.0.0/0 gateway={{ failover_ping_targets.secondary }} check-gateway=ping distance=2 comment="Default Route via Backup ISP (Failover)"
 
 # ------------------------------------------------------------------------------
-# 6. Site-to-Site WireGuard VPN
+# 7. Site-to-Site WireGuard VPN
 # ------------------------------------------------------------------------------
 /interface wireguard add listen-port={{ wireguard.listen_port }} name={{ wireguard.interface }} private-key="{{ wireguard.private_key }}" comment="Site-to-Site VPN"
 /ip address add address={{ wireguard.tunnel_ip }} interface={{ wireguard.interface }} comment="WireGuard Tunnel IP"
@@ -83,7 +104,7 @@
 {% endfor %}
 
 # ------------------------------------------------------------------------------
-# 7. Enterprise Security & Isolation Firewall Filters
+# 8. Enterprise Security & Isolation Firewall Filters
 # ------------------------------------------------------------------------------
 /ip firewall filter
 # FastTrack & State Tracking
@@ -126,12 +147,12 @@ add action=accept chain=forward in-interface-list=LAN out-interface-list=WAN com
 add action=accept chain=forward in-interface={{ wireguard.interface }} out-interface-list=LAN comment="Allow Inter-Branch VPN Traffic"
 
 # ------------------------------------------------------------------------------
-# 8. QoS Priority Queue for VoIP Telephony
+# 9. QoS Priority Queue for VoIP Telephony
 # ------------------------------------------------------------------------------
 /queue simple add name="VoIP-Priority-Queue" target="vlan60-VoIP" priority=1/1 max-limit=10M/10M comment="VoIP High Priority QoS"
 
 # ------------------------------------------------------------------------------
-# 9. Observability, SNMP & Prometheus Monitoring
+# 10. Observability, SNMP & Prometheus Monitoring
 # ------------------------------------------------------------------------------
 # Enable SNMP v2c / v3 for Prometheus Monitoring
 /snmp set enabled=yes contact="{{ snmp_contact | default('noc@corp.netdevops.local') }}" location="{{ site_name }}"

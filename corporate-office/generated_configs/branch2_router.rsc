@@ -132,7 +132,33 @@
 /ip firewall nat add action=masquerade chain=srcnat out-interface-list=WAN comment="NAT Outbound to Internet"
 
 # ------------------------------------------------------------------------------
-# 5. Dual ISP Recursive Failover Routing
+# 5. Routing Tables & Dual ISP Inbound Symmetry (Mangle)
+# ------------------------------------------------------------------------------
+# Dedicated FIB Routing Tables for Return Traffic Symmetry
+/routing table add name=to_ether1 fib comment="Routing table for ISP1-Primary-Fiber"
+/ip route add dst-address=0.0.0.0/0 gateway=203.0.114.1 routing-table=to_ether1 comment="Default return route via ether1"
+/routing table add name=to_ether2 fib comment="Routing table for ISP2-Backup-Radio"
+/ip route add dst-address=0.0.0.0/0 gateway=198.51.101.1 routing-table=to_ether2 comment="Default return route via ether2"
+
+# Inbound Connection & Routing Marks
+/ip firewall mangle
+# Mark connections initiating from ether1 to router services
+add action=mark-connection chain=input in-interface=ether1 connection-state=new new-connection-mark=ether1_conn passthrough=yes comment="Mark inbound connections on ether1"
+add action=mark-routing chain=output connection-mark=ether1_conn new-routing-mark=to_ether1 passthrough=no comment="Route replies back via ether1"
+
+# Mark forwarded connections (e.g. DST-NAT / Port Forwarding)
+add action=mark-connection chain=forward in-interface=ether1 connection-state=new new-connection-mark=ether1_fwd passthrough=yes comment="Mark forwarded traffic on ether1"
+add action=mark-routing chain=prerouting in-interface-list=LAN connection-mark=ether1_fwd new-routing-mark=to_ether1 passthrough=no comment="Return forwarded traffic via ether1"
+# Mark connections initiating from ether2 to router services
+add action=mark-connection chain=input in-interface=ether2 connection-state=new new-connection-mark=ether2_conn passthrough=yes comment="Mark inbound connections on ether2"
+add action=mark-routing chain=output connection-mark=ether2_conn new-routing-mark=to_ether2 passthrough=no comment="Route replies back via ether2"
+
+# Mark forwarded connections (e.g. DST-NAT / Port Forwarding)
+add action=mark-connection chain=forward in-interface=ether2 connection-state=new new-connection-mark=ether2_fwd passthrough=yes comment="Mark forwarded traffic on ether2"
+add action=mark-routing chain=prerouting in-interface-list=LAN connection-mark=ether2_fwd new-routing-mark=to_ether2 passthrough=no comment="Return forwarded traffic via ether2"
+
+# ------------------------------------------------------------------------------
+# 6. Dual ISP Recursive Failover Routing (Main Table)
 # ------------------------------------------------------------------------------
 # Primary Target Ping Anchor
 /ip route add dst-address=8.8.8.8/32 gateway=203.0.114.1 scope=10 comment="Primary Ping Anchor"
@@ -143,7 +169,7 @@
 /ip route add dst-address=0.0.0.0/0 gateway=1.1.1.1 check-gateway=ping distance=2 comment="Default Route via Backup ISP (Failover)"
 
 # ------------------------------------------------------------------------------
-# 6. Site-to-Site WireGuard VPN
+# 7. Site-to-Site WireGuard VPN
 # ------------------------------------------------------------------------------
 /interface wireguard add listen-port=51820 name=wg-corp private-key="aHR0cHM6Ly93d3cueW91dHViZS5jb20vd2F0Y2g/dj1kUXc0dzlXZ1hjUQ==" comment="Site-to-Site VPN"
 /ip address add address=10.255.255.2/30 interface=wg-corp comment="WireGuard Tunnel IP"
@@ -152,7 +178,7 @@
 /ip route add dst-address=10.10.0.0/16 gateway=wg-corp comment="Route to HQ-Dhaka"
 
 # ------------------------------------------------------------------------------
-# 7. Enterprise Security & Isolation Firewall Filters
+# 8. Enterprise Security & Isolation Firewall Filters
 # ------------------------------------------------------------------------------
 /ip firewall filter
 # FastTrack & State Tracking
@@ -195,12 +221,12 @@ add action=accept chain=forward in-interface-list=LAN out-interface-list=WAN com
 add action=accept chain=forward in-interface=wg-corp out-interface-list=LAN comment="Allow Inter-Branch VPN Traffic"
 
 # ------------------------------------------------------------------------------
-# 8. QoS Priority Queue for VoIP Telephony
+# 9. QoS Priority Queue for VoIP Telephony
 # ------------------------------------------------------------------------------
 /queue simple add name="VoIP-Priority-Queue" target="vlan60-VoIP" priority=1/1 max-limit=10M/10M comment="VoIP High Priority QoS"
 
 # ------------------------------------------------------------------------------
-# 9. Observability, SNMP & Prometheus Monitoring
+# 10. Observability, SNMP & Prometheus Monitoring
 # ------------------------------------------------------------------------------
 # Enable SNMP v2c / v3 for Prometheus Monitoring
 /snmp set enabled=yes contact="noc@corp.netdevops.local" location="Branch-Chittagong"
