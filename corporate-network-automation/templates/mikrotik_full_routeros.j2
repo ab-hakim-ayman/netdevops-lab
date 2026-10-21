@@ -1,0 +1,127 @@
+# ==============================================================================
+# MikroTik RouterOS v7 Production Configuration Script
+# Generated automatically via NetDevOps Jinja2 Automation Engine
+# Hostname: {{ hostname }} | Site: {{ site_name }} | Subnet: {{ site_prefix }}
+# ==============================================================================
+
+/system identity set name="{{ hostname }}"
+/system clock set time-zone-name="{{ timezone }}"
+
+# ------------------------------------------------------------------------------
+# 1. Interface Lists
+# ------------------------------------------------------------------------------
+/interface list add name=WAN
+/interface list add name=LAN
+/interface list add name=ISOLATED_GUEST
+
+{% for wan in wan_interfaces %}
+/interface list member add interface={{ wan.name }} list=WAN
+{% endfor %}
+/interface list member add interface={{ lan_bridge }} list=LAN
+
+# ------------------------------------------------------------------------------
+# 2. LAN Bridge & VLAN Setup (vlan-filtering enabled)
+# ------------------------------------------------------------------------------
+/interface bridge add name={{ lan_bridge }} vlan-filtering=yes protocol-mode=rstp
+
+{% for trunk in trunk_interfaces %}
+/interface bridge port add bridge={{ lan_bridge }} interface={{ trunk }}
+{% endfor %}
+
+# ------------------------------------------------------------------------------
+# 3. VLAN Interfaces, IP Addressing, Pools & DHCP Servers
+# ------------------------------------------------------------------------------
+{% for vlan in vlans %}
+# --- VLAN {{ vlan.id }}: {{ vlan.name }} ({{ vlan.description }}) ---
+/interface vlan add interface={{ lan_bridge }} name="vlan{{ vlan.id }}-{{ vlan.name }}" vlan-id={{ vlan.id }}
+/interface list member add interface="vlan{{ vlan.id }}-{{ vlan.name }}" list=LAN
+
+/ip address add address={{ vlan.gateway }} interface="vlan{{ vlan.id }}-{{ vlan.name }}" comment="{{ vlan.name }}"
+/ip pool add name="pool-vlan{{ vlan.id }}-{{ vlan.name }}" ranges={{ vlan.dhcp_range }}
+/ip dhcp-server add address-pool="pool-vlan{{ vlan.id }}-{{ vlan.name }}" interface="vlan{{ vlan.id }}-{{ vlan.name }}" name="dhcp-vlan{{ vlan.id }}" lease-time=8h disabled=no
+/ip dhcp-server network add address={{ vlan.network }} gateway={{ vlan.gateway_ip }} dns-server={{ dns_servers | join(',') }} domain="{{ corporate_domain }}" comment="{{ vlan.name }} Network"
+
+{% if vlan.guest_only | default(false) %}
+/interface list member add interface="vlan{{ vlan.id }}-{{ vlan.name }}" list=ISOLATED_GUEST
+{% endif %}
+{% endfor %}
+
+# Bridge VLAN Trunk / Tagging Table
+{% for vlan in vlans %}
+/interface bridge vlan add bridge={{ lan_bridge }} tagged={{ (trunk_interfaces + [lan_bridge]) | join(',') }} vlan-ids={{ vlan.id }} comment="{{ vlan.name }}"
+{% endfor %}
+
+# ------------------------------------------------------------------------------
+# 4. Dual ISP WAN Addressing & NAT
+# ------------------------------------------------------------------------------
+{% for wan in wan_interfaces %}
+/ip address add address={{ wan.ip }} interface={{ wan.name }} comment="{{ wan.description }} ({{ wan.role }})"
+{% endfor %}
+
+/ip firewall nat add action=masquerade chain=srcnat out-interface-list=WAN comment="NAT Outbound to Internet"
+
+# ------------------------------------------------------------------------------
+# 5. Dual ISP Recursive Failover Routing
+# ------------------------------------------------------------------------------
+# Primary Target Ping Anchor
+/ip route add dst-address={{ failover_ping_targets.primary }}/32 gateway={{ (wan_interfaces | selectattr('role', 'equalto', 'primary') | first).gateway }} scope=10 comment="Primary Ping Anchor"
+/ip route add dst-address=0.0.0.0/0 gateway={{ failover_ping_targets.primary }} check-gateway=ping distance=1 comment="Default Route via Primary ISP (Monitored)"
+
+# Secondary Target Ping Anchor
+/ip route add dst-address={{ failover_ping_targets.secondary }}/32 gateway={{ (wan_interfaces | selectattr('role', 'equalto', 'backup') | first).gateway }} scope=10 comment="Backup Ping Anchor"
+/ip route add dst-address=0.0.0.0/0 gateway={{ failover_ping_targets.secondary }} check-gateway=ping distance=2 comment="Default Route via Backup ISP (Failover)"
+
+# ------------------------------------------------------------------------------
+# 6. Site-to-Site WireGuard VPN
+# ------------------------------------------------------------------------------
+/interface wireguard add listen-port={{ wireguard.listen_port }} name={{ wireguard.interface }} private-key="{{ wireguard.private_key }}" comment="Site-to-Site VPN"
+/ip address add address={{ wireguard.tunnel_ip }} interface={{ wireguard.interface }} comment="WireGuard Tunnel IP"
+
+{% for peer in wireguard.peers %}
+/interface wireguard peers add allowed-address="{{ peer.allowed_ips }}" {% if peer.endpoint_address is defined %}endpoint-address="{{ peer.endpoint_address }}" endpoint-port={{ peer.endpoint_port }}{% endif %} interface={{ wireguard.interface }} public-key="{{ peer.public_key }}" persistent-keepalive={{ peer.persistent_keepalive | default(25) }}s comment="{{ peer.name }}"
+/ip route add dst-address={{ peer.remote_subnet }} gateway={{ wireguard.interface }} comment="Route to {{ peer.name }}"
+{% endfor %}
+
+# ------------------------------------------------------------------------------
+# 7. Enterprise Security & Isolation Firewall Filters
+# ------------------------------------------------------------------------------
+/ip firewall filter
+# FastTrack & State Tracking
+add action=accept chain=input connection-state=established,related comment="Accept Established/Related Input"
+add action=drop chain=input connection-state=invalid comment="Drop Invalid Input"
+add action=accept chain=input protocol=icmp comment="Allow ICMP (Ping)"
+
+# Allow WireGuard VPN Handshakes on WAN
+add action=accept chain=input dst-port={{ wireguard.listen_port }} protocol=udp in-interface-list=WAN comment="Allow WireGuard Tunnel Inbound"
+
+# Management Protection: Only VLAN 10 (Management) can access Winbox/SSH on router
+add action=accept chain=input in-interface="vlan10-Management" comment="Allow Full Admin Access from Management VLAN"
+add action=drop chain=input dst-port=22,80,443,8291,8728,8729 protocol=tcp comment="Block Router Services from Other VLANs"
+
+# Forwarding Rules: Established / Related / FastTrack
+add action=fasttrack-connection chain=forward connection-state=established,related hw-offload=yes comment="FastTrack"
+add action=accept chain=forward connection-state=established,related comment="Accept Established/Related Forward"
+add action=drop chain=forward connection-state=invalid comment="Drop Invalid Forward"
+
+# CCTV Security: Completely block CCTV VLAN from Internet access
+add action=drop chain=forward in-interface="vlan80-CCTV" out-interface-list=WAN comment="DROP CCTV Outbound to Internet (Anti-Leak)"
+
+# Guest Hotspot Isolation: Block Guests from ALL internal office subnets
+add action=drop chain=forward in-interface-list=ISOLATED_GUEST out-interface-list=!WAN comment="DROP Guest Access to Corporate LAN"
+
+# HR & Accounts Protection: General Staff cannot initiate connections to HR
+add action=drop chain=forward in-interface="vlan50-Staff" out-interface="vlan30-HR-Accounts" comment="BLOCK Staff to HR/Accounts"
+
+# Allow Inter-VLAN routing for trusted internal services
+add action=accept chain=forward in-interface-list=LAN out-interface-list=LAN comment="Allow Internal Corporate Routing"
+add action=accept chain=forward in-interface-list=LAN out-interface-list=WAN comment="Allow Corporate Internet"
+add action=accept chain=forward in-interface={{ wireguard.interface }} out-interface-list=LAN comment="Allow Inter-Branch VPN Traffic"
+
+# ------------------------------------------------------------------------------
+# 8. QoS Priority Queue for VoIP Telephony
+# ------------------------------------------------------------------------------
+/queue simple add name="VoIP-Priority-Queue" target="vlan60-VoIP" priority=1/1 max-limit=10M/10M comment="VoIP High Priority QoS"
+
+# ------------------------------------------------------------------------------
+# Configuration rendered successfully.
+# ------------------------------------------------------------------------------
