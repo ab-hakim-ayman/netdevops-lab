@@ -1,138 +1,95 @@
-# NetDevOps Lab: 4-Node Spine-Leaf BGP Fabric with Containerlab & Ansible
+# NetDevOps Lab - Multi-Project Network Automation Monorepo
 
-An automated NetDevOps lab environment on Ubuntu using Docker, Containerlab, FRRouting (FRR), Ansible, and Jinja2.
-
-## 🏗️ Fabric Topology
-
-```
-             +-----------------+        +-----------------+
-             |     spine1      |        |     spine2      |
-             |   (AS 65001)    |        |   (AS 65002)    |
-             |  10.255.0.1/32  |        |  10.255.0.2/32  |
-             +--------+--------+        +--------+--------+
-                 eth1 |  eth2               eth1 |  eth2
-                      |    \                 /   |
-                      |     \               /    |
-                      |      \             /     |
-                 eth1 |   eth1\       eth2/      | eth2
-             +--------+--------+        +--------+--------+
-             |      leaf1      |        |      leaf2      |
-             |   (AS 65011)    |        |   (AS 65012)    |
-             |  10.255.0.11/32 |        |  10.255.0.12/32 |
-             +-----------------+        +-----------------+
-```
-
-### IP Scheme & Interconnects
-
-| Link | Interface 1 | IP 1 | Interface 2 | IP 2 | Subnet |
-|------|-------------|------|-------------|------|--------|
-| spine1 <-> leaf1 | `spine1:eth1` | `10.0.11.1/30` | `leaf1:eth1` | `10.0.11.2/30` | `10.0.11.0/30` |
-| spine1 <-> leaf2 | `spine1:eth2` | `10.0.12.1/30` | `leaf2:eth1` | `10.0.12.2/30` | `10.0.12.0/30` |
-| spine2 <-> leaf1 | `spine2:eth1` | `10.0.21.1/30` | `leaf1:eth2` | `10.0.21.2/30` | `10.0.21.0/30` |
-| spine2 <-> leaf2 | `spine2:eth2` | `10.0.22.1/30` | `leaf2:eth2` | `10.0.22.2/30` | `10.0.22.0/30` |
-
-### Management Network
-
-- **Subnet**: `172.21.20.0/24`
-- **spine1**: `172.21.20.11`
-- **spine2**: `172.21.20.12`
-- **leaf1**: `172.21.20.21`
-- **leaf2**: `172.21.20.22`
-
----
-
-## 📁 Project Structure
+Welcome to the **NetDevOps Lab** repository. This repository is organized as a clean, modular multi-project monorepo containing two distinct, enterprise-grade network automation projects:
 
 ```text
 netdevops-lab/
-├── ansible.cfg                    # Ansible default configs & stdout formatting
-├── configs/                       # Bootstrap FRR configs & daemon files
-│   ├── daemons                    # Enables zebra and bgpd daemons
-│   ├── vtysh.conf                 # Integrated vtysh config
-│   ├── spine1.conf                # Initial bootstrap config
-│   ├── spine2.conf                # Initial bootstrap config
-│   ├── leaf1.conf                 # Initial bootstrap config
-│   └── leaf2.conf                 # Initial bootstrap config
-├── inventory/
-│   ├── hosts.ini                  # Inventory with spines & leaves (Docker connection)
-│   └── host_vars/                 # Per-node BGP & interface definitions
-│       ├── spine1.yml
-│       ├── spine2.yml
-│       ├── leaf1.yml
-│       └── leaf2.yml
-├── playbooks/
-│   └── deploy.yml                 # Automation playbook (Jinja2 render + vtysh apply + verification)
-├── templates/
-│   └── frr_bgp.j2                 # Jinja2 template for FRR interfaces & BGP peering
-├── topology.clab.yml              # Containerlab 4-node topology specification
-└── README.md
+├── spine-leaf-fabric/            # Project 1: Data Center EVPN / eBGP Spine-Leaf Fabric
+│   ├── topology.clab.yml         # Containerlab 2-Spine / 2-Leaf FRRouting topology
+│   ├── docker-compose.netbox.yml # Local NetBox SSOT + PostgreSQL + Redis
+│   ├── configs/                  # Prometheus, Alertmanager, Grafana provisioning
+│   ├── inventory/                # Dynamic NetBox inventory & static host_vars
+│   ├── playbooks/                # Ansible deployment & pre-check playbooks
+│   ├── templates/                # Jinja2 templates for FRR frr.conf
+│   └── scripts/                  # Pydantic schema validation & NetBox seeding
+│
+├── corporate-office/             # Project 2: Multi-Branch Corporate Network Automation
+│   ├── inventory/                # Host vars (hq_router, branch2_router) & NetBox dynamic inv
+│   ├── templates/                # Master MikroTik RouterOS v7 Jinja2 template
+│   ├── scripts/                  # Pydantic schema validation, config generator, NetBox sync
+│   ├── generated_configs/        # Pre-rendered production .rsc scripts (HQ & Branch 2)
+│   ├── playbooks/                # Automated deployment & end-to-end ping validation
+│   └── README.md                 # Complete MikroTik architecture & runbook
+│
+└── .github/                      # Centralized CI/CD GitHub Actions pipelines
+    └── workflows/
+        └── pipeline.yml          # Dual-project linting, schema validation & automated deploy
 ```
 
 ---
 
-## 🚀 Quick Commands
+## 🏛️ Project Summaries
 
-### 1. Inspect Fabric
-```bash
-clab inspect -t topology.clab.yml
-```
+### 1. [spine-leaf-fabric](./spine-leaf-fabric/) — Data Center Fabric Automation
+* **Architecture:** 2-Spine / 2-Leaf CLOS topology built on FRRouting (FRR 9.1+) and Containerlab.
+* **Underlay / Routing:** eBGP underlay with private ASNs (Spine: 65001-65002, Leaf: 65011-65012) and BFD fast convergence.
+* **Source of Truth:** NetBox (DCIM & IPAM) providing dynamic inventory and config context.
+* **Observability:** Prometheus metrics scraping via `frr-exporter`, Grafana dashboards, and Alertmanager.
+* **Safety:** Automated pre-change configuration backup, atomic config reload (`frr-reload.py`), and automated rollback on validation failure.
+* 📖 **Quickstart Guide:** See [spine-leaf-fabric/README.md](./spine-leaf-fabric/README.md).
 
-### 2. Run Ansible Automation Playbook
 ```bash
+# Navigate to fabric directory
+cd spine-leaf-fabric
+
+# Deploy lab topology
+sudo clab deploy -t topology.clab.yml
+
+# Run Ansible configuration & validation
 ansible-playbook playbooks/deploy.yml
 ```
 
-### 3. Access FRR CLI (`vtysh`)
+---
+
+### 2. [corporate-office](./corporate-office/) — Multi-Branch Corporate Network Automation
+* **Architecture:** Enterprise HQ (Dhaka) & Branch (Chittagong) branch office network powered by MikroTik RouterOS v7.
+* **Dual ISP WAN:** Active/Backup WAN with recursive route failover (Targeting `8.8.8.8` via ISP1 and `1.1.1.1` via ISP2).
+* **Site-to-Site VPN:** Fully encrypted WireGuard tunnel (`10.254.0.0/30`) with MTU 1420 and static routing between branches.
+* **Segmentation:** 9 distinct Departmental VLANs with standard 802.1Q hardware bridge filtering:
+  * HR (VLAN 10), Admin (VLAN 20), Management (VLAN 30), Employee (VLAN 40), Staff (VLAN 50), CCTV (VLAN 60), VoIP (VLAN 70), Printer (VLAN 80), Guest WiFi / Hotspot (VLAN 90).
+* **Security & Access Control:** Strict stateful firewall, inter-VLAN isolation (preventing guest/hotspot and employee access to CCTV/Management), and NAT overload (masquerade) with dynamic WAN out-interface lists.
+* **Source of Truth & Tooling:** NetBox dynamic inventory, Jinja2 template rendering, Pydantic v2 schema validation, and Ansible deployment.
+* 📖 **Quickstart Guide:** See [corporate-office/README.md](./corporate-office/README.md).
+
 ```bash
-# Access spine1 vtysh
-docker exec -it clab-netdevops-lab-spine1 vtysh
+# Navigate to corporate office directory
+cd corporate-office
 
-# Check BGP summary
-docker exec clab-netdevops-lab-leaf1 vtysh -c "show ip bgp summary"
+# Validate schema with Pydantic
+python3 scripts/validate_corp_schema.py
 
-# Check BGP routes
-docker exec clab-netdevops-lab-leaf1 vtysh -c "show ip route bgp"
-```
+# Generate RouterOS .rsc configuration scripts
+python3 scripts/generate_configs.py
 
-### 4. Test Data Plane Connectivity
-```bash
-# Ping leaf2 loopback from leaf1
-docker exec clab-netdevops-lab-leaf1 ping -c 3 -I 10.255.0.11 10.255.0.12
-```
+# Sync sites, routers, and 18 VLAN prefixes to NetBox
+python3 scripts/netbox_corp_sync.py
 
-### 5. Destroy the Lab
-```bash
-clab destroy -t topology.clab.yml
+# Deploy to live MikroTik devices via Ansible
+ansible-playbook playbooks/deploy_corp.yml
 ```
 
 ---
 
-## 📊 Observability & Telemetry (Prometheus & Grafana)
+## 🚀 Shared Services & NetBox IPAM
 
-The lab includes real-time telemetry running in the Containerlab fabric:
+Both projects are integrated with a shared local NetBox instance running at `http://localhost:8000`:
+- **Spine-Leaf Fabric:** Filtered under site `lab-dc1` and roles `spine`, `leaf`.
+- **Corporate Office:** Filtered under sites `hq-dhaka`, `branch-chittagong` and role `gateway-router`.
 
-- **Prometheus UI**: [http://localhost:9090](http://localhost:9090)
-  - Scrapes metrics every 5s from all switches: BGP session states (`frr_bgp_peer_state`), prefix counts (`frr_bgp_peer_pfx_rcd`, `frr_bgp_peer_pfx_snt`), interface traffic (`frr_interface_receive_bytes_total`), and uptime.
-- **Grafana Dashboard**: [http://localhost:3000](http://localhost:3000)
-  - **Credentials**: `admin` / `admin`
-  - Automated datasource provisioning configured to Prometheus at `http://172.21.20.30:9090`.
+NetBox API Token: `0123456789abcdef0123456789abcdef01234567`.
 
----
-
-## 🛡️ Enterprise NetDevOps Features
-
-1. **Atomic Reload & Auto-Rollback (`frr-reload.py` + Ansible `block/rescue`)**:
-   - Replaces disruptive config reloads with atomic deltas via `/usr/lib/frr/frr-reload.py`.
-   - Takes pre-change timestamped backups (`/etc/frr/frr.conf.bak`).
-   - If BGP session assertion or end-to-end ping fails, the `rescue` section automatically restores the backup config and reloads FRR.
-2. **Pre-Change Validation Layer**:
-   - **YAML Linting**: `.yamllint` configuration.
-   - **Pydantic Schema Validator**: `scripts/validate_schema.py` validates ASN ranges (1-4294967295) and IPv4/CIDR addresses before deployment.
-   - **Dry-Run Diff**: `ansible-playbook playbooks/deploy.yml --check --diff` exports planned configuration changes.
-3. **Secrets Management (Ansible Vault)**:
-   - Sensitive router credentials encrypted with AES-256 in `inventory/group_vars/all/vault.yml`.
-   - Vault password stored in `.vault_pass` (git-ignored).
-4. **Automated CI/CD**:
-   - Pull Request: runs `yamllint`, `validate_schema.py`, syntax-check, and `--check --diff`.
-   - Push to `main`: triggers live fabric deployment and post-change data plane validation.
-
+To start or inspect the shared NetBox stack:
+```bash
+cd spine-leaf-fabric
+docker compose -f docker-compose.netbox.yml up -d
+```

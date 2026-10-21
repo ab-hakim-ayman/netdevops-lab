@@ -1,10 +1,10 @@
 # ==============================================================================
 # MikroTik RouterOS v7 Production Configuration Script
 # Generated automatically via NetDevOps Jinja2 Automation Engine
-# Hostname: hq-rtr01 | Site: HQ-Dhaka | Subnet: 10.10.0.0/16
+# Hostname: br2-rtr01 | Site: Branch-Chittagong | Subnet: 10.20.0.0/16
 # ==============================================================================
 
-/system identity set name="hq-rtr01"
+/system identity set name="br2-rtr01"
 /system clock set time-zone-name="Asia/Dhaka"
 
 # ------------------------------------------------------------------------------
@@ -33,82 +33,82 @@
 /interface vlan add interface=bridge-lan name="vlan10-Management" vlan-id=10
 /interface list member add interface="vlan10-Management" list=LAN
 
-/ip address add address=10.10.10.1/24 interface="vlan10-Management" comment="Management"
-/ip pool add name="pool-vlan10-Management" ranges=10.10.10.50-10.10.10.200
+/ip address add address=10.20.10.1/24 interface="vlan10-Management" comment="Management"
+/ip pool add name="pool-vlan10-Management" ranges=10.20.10.50-10.20.10.200
 /ip dhcp-server add address-pool="pool-vlan10-Management" interface="vlan10-Management" name="dhcp-vlan10" lease-time=8h disabled=no
-/ip dhcp-server network add address=10.10.10.0/24 gateway=10.10.10.1 dns-server=1.1.1.1,8.8.8.8 domain="corp.netdevops.local" comment="Management Network"
+/ip dhcp-server network add address=10.20.10.0/24 gateway=10.20.10.1 dns-server=1.1.1.1,8.8.8.8 domain="corp.netdevops.local" comment="Management Network"
 
-# --- VLAN 20: Top-Management (Executive and Board Management) ---
+# --- VLAN 20: Top-Management (Branch Management & Directors) ---
 /interface vlan add interface=bridge-lan name="vlan20-Top-Management" vlan-id=20
 /interface list member add interface="vlan20-Top-Management" list=LAN
 
-/ip address add address=10.10.20.1/24 interface="vlan20-Top-Management" comment="Top-Management"
-/ip pool add name="pool-vlan20-Top-Management" ranges=10.10.20.50-10.10.20.200
+/ip address add address=10.20.20.1/24 interface="vlan20-Top-Management" comment="Top-Management"
+/ip pool add name="pool-vlan20-Top-Management" ranges=10.20.20.50-10.20.20.200
 /ip dhcp-server add address-pool="pool-vlan20-Top-Management" interface="vlan20-Top-Management" name="dhcp-vlan20" lease-time=8h disabled=no
-/ip dhcp-server network add address=10.10.20.0/24 gateway=10.10.20.1 dns-server=1.1.1.1,8.8.8.8 domain="corp.netdevops.local" comment="Top-Management Network"
+/ip dhcp-server network add address=10.20.20.0/24 gateway=10.20.20.1 dns-server=1.1.1.1,8.8.8.8 domain="corp.netdevops.local" comment="Top-Management Network"
 
-# --- VLAN 30: HR-Accounts (HR and Financial Accounting) ---
+# --- VLAN 30: HR-Accounts (Branch HR & Accounting) ---
 /interface vlan add interface=bridge-lan name="vlan30-HR-Accounts" vlan-id=30
 /interface list member add interface="vlan30-HR-Accounts" list=LAN
 
-/ip address add address=10.10.30.1/24 interface="vlan30-HR-Accounts" comment="HR-Accounts"
-/ip pool add name="pool-vlan30-HR-Accounts" ranges=10.10.30.50-10.10.30.200
+/ip address add address=10.20.30.1/24 interface="vlan30-HR-Accounts" comment="HR-Accounts"
+/ip pool add name="pool-vlan30-HR-Accounts" ranges=10.20.30.50-10.20.30.200
 /ip dhcp-server add address-pool="pool-vlan30-HR-Accounts" interface="vlan30-HR-Accounts" name="dhcp-vlan30" lease-time=8h disabled=no
-/ip dhcp-server network add address=10.10.30.0/24 gateway=10.10.30.1 dns-server=1.1.1.1,8.8.8.8 domain="corp.netdevops.local" comment="HR-Accounts Network"
+/ip dhcp-server network add address=10.20.30.0/24 gateway=10.20.30.1 dns-server=1.1.1.1,8.8.8.8 domain="corp.netdevops.local" comment="HR-Accounts Network"
 
 # --- VLAN 40: Admin-Ops (Administrative Operations) ---
 /interface vlan add interface=bridge-lan name="vlan40-Admin-Ops" vlan-id=40
 /interface list member add interface="vlan40-Admin-Ops" list=LAN
 
-/ip address add address=10.10.40.1/24 interface="vlan40-Admin-Ops" comment="Admin-Ops"
-/ip pool add name="pool-vlan40-Admin-Ops" ranges=10.10.40.50-10.10.40.200
+/ip address add address=10.20.40.1/24 interface="vlan40-Admin-Ops" comment="Admin-Ops"
+/ip pool add name="pool-vlan40-Admin-Ops" ranges=10.20.40.50-10.20.40.200
 /ip dhcp-server add address-pool="pool-vlan40-Admin-Ops" interface="vlan40-Admin-Ops" name="dhcp-vlan40" lease-time=8h disabled=no
-/ip dhcp-server network add address=10.10.40.0/24 gateway=10.10.40.1 dns-server=1.1.1.1,8.8.8.8 domain="corp.netdevops.local" comment="Admin-Ops Network"
+/ip dhcp-server network add address=10.20.40.0/24 gateway=10.20.40.1 dns-server=1.1.1.1,8.8.8.8 domain="corp.netdevops.local" comment="Admin-Ops Network"
 
-# --- VLAN 50: Staff (General Office Staff) ---
+# --- VLAN 50: Staff (General Branch Staff) ---
 /interface vlan add interface=bridge-lan name="vlan50-Staff" vlan-id=50
 /interface list member add interface="vlan50-Staff" list=LAN
 
-/ip address add address=10.10.50.1/24 interface="vlan50-Staff" comment="Staff"
-/ip pool add name="pool-vlan50-Staff" ranges=10.10.50.50-10.10.50.250
+/ip address add address=10.20.50.1/24 interface="vlan50-Staff" comment="Staff"
+/ip pool add name="pool-vlan50-Staff" ranges=10.20.50.50-10.20.50.250
 /ip dhcp-server add address-pool="pool-vlan50-Staff" interface="vlan50-Staff" name="dhcp-vlan50" lease-time=8h disabled=no
-/ip dhcp-server network add address=10.10.50.0/24 gateway=10.10.50.1 dns-server=1.1.1.1,8.8.8.8 domain="corp.netdevops.local" comment="Staff Network"
+/ip dhcp-server network add address=10.20.50.0/24 gateway=10.20.50.1 dns-server=1.1.1.1,8.8.8.8 domain="corp.netdevops.local" comment="Staff Network"
 
-# --- VLAN 60: VoIP (IP Telephony and PBX) ---
+# --- VLAN 60: VoIP (IP Telephony and Branch Intercom) ---
 /interface vlan add interface=bridge-lan name="vlan60-VoIP" vlan-id=60
 /interface list member add interface="vlan60-VoIP" list=LAN
 
-/ip address add address=10.10.60.1/24 interface="vlan60-VoIP" comment="VoIP"
-/ip pool add name="pool-vlan60-VoIP" ranges=10.10.60.50-10.10.60.200
+/ip address add address=10.20.60.1/24 interface="vlan60-VoIP" comment="VoIP"
+/ip pool add name="pool-vlan60-VoIP" ranges=10.20.60.50-10.20.60.200
 /ip dhcp-server add address-pool="pool-vlan60-VoIP" interface="vlan60-VoIP" name="dhcp-vlan60" lease-time=8h disabled=no
-/ip dhcp-server network add address=10.10.60.0/24 gateway=10.10.60.1 dns-server=1.1.1.1,8.8.8.8 domain="corp.netdevops.local" comment="VoIP Network"
+/ip dhcp-server network add address=10.20.60.0/24 gateway=10.20.60.1 dns-server=1.1.1.1,8.8.8.8 domain="corp.netdevops.local" comment="VoIP Network"
 
-# --- VLAN 70: Printers (Networked Printers & Scanners) ---
+# --- VLAN 70: Printers (Branch Networked Printers) ---
 /interface vlan add interface=bridge-lan name="vlan70-Printers" vlan-id=70
 /interface list member add interface="vlan70-Printers" list=LAN
 
-/ip address add address=10.10.70.1/24 interface="vlan70-Printers" comment="Printers"
-/ip pool add name="pool-vlan70-Printers" ranges=10.10.70.10-10.10.70.50
+/ip address add address=10.20.70.1/24 interface="vlan70-Printers" comment="Printers"
+/ip pool add name="pool-vlan70-Printers" ranges=10.20.70.10-10.20.70.50
 /ip dhcp-server add address-pool="pool-vlan70-Printers" interface="vlan70-Printers" name="dhcp-vlan70" lease-time=8h disabled=no
-/ip dhcp-server network add address=10.10.70.0/24 gateway=10.10.70.1 dns-server=1.1.1.1,8.8.8.8 domain="corp.netdevops.local" comment="Printers Network"
+/ip dhcp-server network add address=10.20.70.0/24 gateway=10.20.70.1 dns-server=1.1.1.1,8.8.8.8 domain="corp.netdevops.local" comment="Printers Network"
 
-# --- VLAN 80: CCTV (CCTV Surveillance & NVR) ---
+# --- VLAN 80: CCTV (Branch CCTV & Security) ---
 /interface vlan add interface=bridge-lan name="vlan80-CCTV" vlan-id=80
 /interface list member add interface="vlan80-CCTV" list=LAN
 
-/ip address add address=10.10.80.1/24 interface="vlan80-CCTV" comment="CCTV"
-/ip pool add name="pool-vlan80-CCTV" ranges=10.10.80.50-10.10.80.200
+/ip address add address=10.20.80.1/24 interface="vlan80-CCTV" comment="CCTV"
+/ip pool add name="pool-vlan80-CCTV" ranges=10.20.80.50-10.20.80.200
 /ip dhcp-server add address-pool="pool-vlan80-CCTV" interface="vlan80-CCTV" name="dhcp-vlan80" lease-time=8h disabled=no
-/ip dhcp-server network add address=10.10.80.0/24 gateway=10.10.80.1 dns-server=1.1.1.1,8.8.8.8 domain="corp.netdevops.local" comment="CCTV Network"
+/ip dhcp-server network add address=10.20.80.0/24 gateway=10.20.80.1 dns-server=1.1.1.1,8.8.8.8 domain="corp.netdevops.local" comment="CCTV Network"
 
-# --- VLAN 90: Guest-Hotspot (Isolated Visitor Guest Wi-Fi) ---
+# --- VLAN 90: Guest-Hotspot (Branch Visitor Guest Wi-Fi) ---
 /interface vlan add interface=bridge-lan name="vlan90-Guest-Hotspot" vlan-id=90
 /interface list member add interface="vlan90-Guest-Hotspot" list=LAN
 
-/ip address add address=10.10.90.1/24 interface="vlan90-Guest-Hotspot" comment="Guest-Hotspot"
-/ip pool add name="pool-vlan90-Guest-Hotspot" ranges=10.10.90.10-10.10.90.250
+/ip address add address=10.20.90.1/24 interface="vlan90-Guest-Hotspot" comment="Guest-Hotspot"
+/ip pool add name="pool-vlan90-Guest-Hotspot" ranges=10.20.90.10-10.20.90.250
 /ip dhcp-server add address-pool="pool-vlan90-Guest-Hotspot" interface="vlan90-Guest-Hotspot" name="dhcp-vlan90" lease-time=8h disabled=no
-/ip dhcp-server network add address=10.10.90.0/24 gateway=10.10.90.1 dns-server=1.1.1.1,8.8.8.8 domain="corp.netdevops.local" comment="Guest-Hotspot Network"
+/ip dhcp-server network add address=10.20.90.0/24 gateway=10.20.90.1 dns-server=1.1.1.1,8.8.8.8 domain="corp.netdevops.local" comment="Guest-Hotspot Network"
 
 /interface list member add interface="vlan90-Guest-Hotspot" list=ISOLATED_GUEST
 
@@ -126,8 +126,8 @@
 # ------------------------------------------------------------------------------
 # 4. Dual ISP WAN Addressing & NAT
 # ------------------------------------------------------------------------------
-/ip address add address=203.0.113.2/30 interface=ether1 comment="ISP1-Primary-Fiber (primary)"
-/ip address add address=198.51.100.2/30 interface=ether2 comment="ISP2-Backup-Radio (backup)"
+/ip address add address=203.0.114.2/30 interface=ether1 comment="ISP1-Primary-Fiber (primary)"
+/ip address add address=198.51.101.2/30 interface=ether2 comment="ISP2-Backup-Radio (backup)"
 
 /ip firewall nat add action=masquerade chain=srcnat out-interface-list=WAN comment="NAT Outbound to Internet"
 
@@ -135,21 +135,21 @@
 # 5. Dual ISP Recursive Failover Routing
 # ------------------------------------------------------------------------------
 # Primary Target Ping Anchor
-/ip route add dst-address=8.8.8.8/32 gateway=203.0.113.1 scope=10 comment="Primary Ping Anchor"
+/ip route add dst-address=8.8.8.8/32 gateway=203.0.114.1 scope=10 comment="Primary Ping Anchor"
 /ip route add dst-address=0.0.0.0/0 gateway=8.8.8.8 check-gateway=ping distance=1 comment="Default Route via Primary ISP (Monitored)"
 
 # Secondary Target Ping Anchor
-/ip route add dst-address=1.1.1.1/32 gateway=198.51.100.1 scope=10 comment="Backup Ping Anchor"
+/ip route add dst-address=1.1.1.1/32 gateway=198.51.101.1 scope=10 comment="Backup Ping Anchor"
 /ip route add dst-address=0.0.0.0/0 gateway=1.1.1.1 check-gateway=ping distance=2 comment="Default Route via Backup ISP (Failover)"
 
 # ------------------------------------------------------------------------------
 # 6. Site-to-Site WireGuard VPN
 # ------------------------------------------------------------------------------
 /interface wireguard add listen-port=51820 name=wg-corp private-key="aHR0cHM6Ly93d3cueW91dHViZS5jb20vd2F0Y2g/dj1kUXc0dzlXZ1hjUQ==" comment="Site-to-Site VPN"
-/ip address add address=10.255.255.1/30 interface=wg-corp comment="WireGuard Tunnel IP"
+/ip address add address=10.255.255.2/30 interface=wg-corp comment="WireGuard Tunnel IP"
 
-/interface wireguard peers add allowed-address="10.255.255.2/32,10.20.0.0/16" endpoint-address="203.0.114.2" endpoint-port=51820 interface=wg-corp public-key="BRANCH2_WG_PUBLIC_KEY_67890=" persistent-keepalive=25s comment="Branch2-Chittagong"
-/ip route add dst-address=10.20.0.0/16 gateway=wg-corp comment="Route to Branch2-Chittagong"
+/interface wireguard peers add allowed-address="10.255.255.1/32,10.10.0.0/16" endpoint-address="203.0.113.2" endpoint-port=51820 interface=wg-corp public-key="HQ_WG_PUBLIC_KEY_12345=" persistent-keepalive=25s comment="HQ-Dhaka"
+/ip route add dst-address=10.10.0.0/16 gateway=wg-corp comment="Route to HQ-Dhaka"
 
 # ------------------------------------------------------------------------------
 # 7. Enterprise Security & Isolation Firewall Filters

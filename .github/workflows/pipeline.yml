@@ -18,27 +18,42 @@ jobs:
       - name: Setup Vault Password
         run: |
           if [ -f "$HOME/.vault_pass" ]; then
-            cp "$HOME/.vault_pass" .vault_pass
+            cp "$HOME/.vault_pass" spine-leaf-fabric/.vault_pass
+            cp "$HOME/.vault_pass" corporate-office/.vault_pass
           elif [ -n "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" ]; then
-            echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > .vault_pass
+            echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > spine-leaf-fabric/.vault_pass
+            echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > corporate-office/.vault_pass
           fi
-          chmod 600 .vault_pass
+          chmod 600 spine-leaf-fabric/.vault_pass 2>/dev/null || true
+          chmod 600 corporate-office/.vault_pass 2>/dev/null || true
 
       - name: Run YAML Linting
         run: |
           yamllint .
 
-      - name: Validate Host Vars Schema with Pydantic
+      - name: Validate Spine-Leaf Schema with Pydantic
         run: |
-          python3 scripts/validate_schema.py
+          cd spine-leaf-fabric && python3 scripts/validate_schema.py
 
-      - name: Ansible Syntax Check
+      - name: Validate Corporate Office Schema with Pydantic
         run: |
-          ansible-playbook playbooks/deploy.yml --syntax-check
+          cd corporate-office && python3 scripts/validate_corp_schema.py
 
-      - name: Ansible Dry-Run & Configuration Diff
+      - name: Test Corporate Office Config Generation
         run: |
-          ansible-playbook playbooks/deploy.yml --check --diff | tee pr_diff.log
+          cd corporate-office && python3 scripts/generate_configs.py
+
+      - name: Spine-Leaf Ansible Syntax Check
+        run: |
+          cd spine-leaf-fabric && ansible-playbook playbooks/deploy.yml --syntax-check
+
+      - name: Corporate Office Ansible Syntax Check
+        run: |
+          cd corporate-office && ansible-playbook playbooks/deploy_corp.yml --syntax-check
+
+      - name: Spine-Leaf Ansible Dry-Run & Configuration Diff
+        run: |
+          cd spine-leaf-fabric && ansible-playbook playbooks/deploy.yml --check --diff | tee ../pr_diff.log
 
   deploy-to-fabric:
     name: Live Fabric Deployment
@@ -51,12 +66,15 @@ jobs:
       - name: Setup Vault Password
         run: |
           if [ -f "$HOME/.vault_pass" ]; then
-            cp "$HOME/.vault_pass" .vault_pass
+            cp "$HOME/.vault_pass" spine-leaf-fabric/.vault_pass
+            cp "$HOME/.vault_pass" corporate-office/.vault_pass
           elif [ -n "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" ]; then
-            echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > .vault_pass
+            echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > spine-leaf-fabric/.vault_pass
+            echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > corporate-office/.vault_pass
           fi
-          chmod 600 .vault_pass
+          chmod 600 spine-leaf-fabric/.vault_pass 2>/dev/null || true
+          chmod 600 corporate-office/.vault_pass 2>/dev/null || true
 
-      - name: Push Config via Ansible
+      - name: Push Fabric Config via Ansible
         run: |
-          ansible-playbook playbooks/deploy.yml
+          cd spine-leaf-fabric && ansible-playbook playbooks/deploy.yml

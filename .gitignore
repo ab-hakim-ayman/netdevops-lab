@@ -1,6 +1,8 @@
 # Containerlab runtime artifacts
 clab-*/
 .clab*/
+**/clab-*/
+**/.clab*/
 *.bak
 
 # Ansible artifacts
